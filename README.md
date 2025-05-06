@@ -24,4 +24,4 @@ git clone https://github.com/Tencent/mars.git
 
 4. 进入到目录`mars/mars`，运行命令`python .\build_windows.py --mars --config Release --incremental False`
 
-5. 最后在目录`mars/mars`下，进入其子文件夹`cmake_build\Windows\Windows.out`，并且将该文件夹下的所有文件以及子文件夹的内容压缩为`zip`，上传到`Actions`中。
+5. 最后将`mars/mars/cmake_build/Windows/Windows.out/`文件夹下的所有文件以及子文件夹的内容压缩为`zip`，上传到`Actions`中。
