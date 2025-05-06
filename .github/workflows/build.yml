@@ -24,8 +24,17 @@ jobs:
       with:
         msbuild-architecture: x64
 
-    - name: Detect MSVC paths and set env
-      id: detect_msvc
+    - name: Clone Tencent/mars
+      run: git clone --depth 1 https://github.com/Tencent/mars.git
+
+    - name: Apply local patches
+      shell: pwsh
+      run: |
+        Copy-Item src_patches/CMakeLists.txt   mars/mars/CMakeLists.txt                  -Force
+        Copy-Item src_patches/build_windows.py mars/mars/build_windows.py                -Force
+        Copy-Item src_patches/positioning.hpp  mars/mars/boost/iostreams/positioning.hpp -Force
+
+    - name: Detect MSVC paths & build (Release, non‑incremental)
       shell: pwsh
       run: |
         $libPath      = (where.exe lib.exe      | Select-Object -First 1)
@@ -34,29 +43,14 @@ jobs:
         Write-Host "lib.exe       => $libPath"
         Write-Host "VsDevCmd.bat  => $vsDevCmdPath"
 
-        $msvcBinHost64 = Split-Path (Split-Path $libPath -Parent) -Parent
-        $msvcTools     = Split-Path $vsDevCmdPath -Parent
+        $env:MSVC_BIN_HOST64_PATH = Split-Path (Split-Path $libPath -Parent) -Parent
+        $env:MSVC_TOOLS_PATH      = Split-Path $vsDevCmdPath -Parent
 
-        "MSVC_BIN_HOST64_PATH=$msvcBinHost64" | Out-File -FilePath $env:GITHUB_ENV -Append
-        "MSVC_TOOLS_PATH=$msvcTools"         | Out-File -FilePath $env:GITHUB_ENV -Append
+        Write-Host "MSVC_BIN_HOST64_PATH = $env:MSVC_BIN_HOST64_PATH"
+        Write-Host "MSVC_TOOLS_PATH      = $env:MSVC_TOOLS_PATH"
 
-        Write-Host "MSVC_BIN_HOST64_PATH set to $msvcBinHost64"
-        Write-Host "MSVC_TOOLS_PATH      set to $msvcTools"
-
-    - name: Clone Tencent/mars
-      run: git clone --depth 1 https://github.com/Tencent/mars.git
-
-    - name: Apply local patches
-      shell: pwsh
-      run: |
-        Copy-Item src_patches/CMakeLists.txt      mars/mars/CMakeLists.txt                         -Force
-        Copy-Item src_patches/build_windows.py    mars/mars/build_windows.py                       -Force
-        Copy-Item src_patches/positioning.hpp     mars/mars/boost/iostreams/positioning.hpp        -Force
-
-    - name: Build (Release, non‑incremental)
-      shell: pwsh
-      working-directory: mars/mars
-      run: python .\build_windows.py --gen_project --config Release --incremental False
+        Set-Location mars/mars
+        python .\build_windows.py --gen_project --config Release --incremental False
 
     - name: Zip build output
       shell: pwsh
