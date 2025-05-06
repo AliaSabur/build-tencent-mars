@@ -50,7 +50,7 @@ jobs:
         Write-Host "MSVC_TOOLS_PATH      = $env:MSVC_TOOLS_PATH"
 
         Set-Location mars/mars
-        python .\build_windows.py --gen_project --config Release --incremental False
+        python .\build_windows.py --mars --config Release --incremental False
 
     - name: Zip build output
       shell: pwsh
