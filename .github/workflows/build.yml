@@ -10,9 +10,6 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    env:
-      MSVC_BIN_HOST64_PATH: 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.43.34808\bin\Hostx64'
-      MSVC_TOOLS_PATH:   'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools'
 
     steps:
     - uses: actions/checkout@v4
@@ -27,20 +24,39 @@ jobs:
       with:
         msbuild-architecture: x64
 
+    - name: Detect MSVC paths and set env
+      id: detect_msvc
+      shell: pwsh
+      run: |
+        $libPath      = (where.exe lib.exe      | Select-Object -First 1)
+        $vsDevCmdPath = (where.exe VsDevCmd.bat | Select-Object -First 1)
+
+        Write-Host "lib.exe       => $libPath"
+        Write-Host "VsDevCmd.bat  => $vsDevCmdPath"
+
+        $msvcBinHost64 = Split-Path (Split-Path $libPath -Parent) -Parent
+        $msvcTools     = Split-Path $vsDevCmdPath -Parent
+
+        "MSVC_BIN_HOST64_PATH=$msvcBinHost64" | Out-File -FilePath $env:GITHUB_ENV -Append
+        "MSVC_TOOLS_PATH=$msvcTools"         | Out-File -FilePath $env:GITHUB_ENV -Append
+
+        Write-Host "MSVC_BIN_HOST64_PATH set to $msvcBinHost64"
+        Write-Host "MSVC_TOOLS_PATH      set to $msvcTools"
+
     - name: Clone Tencent/mars
       run: git clone --depth 1 https://github.com/Tencent/mars.git
 
     - name: Apply local patches
       shell: pwsh
       run: |
-        Copy-Item src_patches/CMakeLists.txt             mars/mars/CMakeLists.txt             -Force
-        Copy-Item src_patches/build_windows.py           mars/mars/build_windows.py           -Force
-        Copy-Item src_patches/positioning.hpp            mars/mars/boost/iostreams/positioning.hpp -Force
+        Copy-Item src_patches/CMakeLists.txt      mars/mars/CMakeLists.txt                         -Force
+        Copy-Item src_patches/build_windows.py    mars/mars/build_windows.py                       -Force
+        Copy-Item src_patches/positioning.hpp     mars/mars/boost/iostreams/positioning.hpp        -Force
 
     - name: Build (Release, non‑incremental)
       shell: pwsh
       working-directory: mars/mars
-      run: python .\build_windows.py --mars --config Release --incremental False
+      run: python .\build_windows.py --gen_project --config Release --incremental False
 
     - name: Zip build output
       shell: pwsh
