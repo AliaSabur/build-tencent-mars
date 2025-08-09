@@ -1,0 +1,56 @@
+name: build-linux
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set GCC to version 11
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-11 g++-11
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 60
+        sudo update-alternatives --set gcc "/usr/bin/gcc-11"
+        sudo update-alternatives --set g++ "/usr/bin/g++-11"
+    
+    - name: Verify GCC version
+      run: gcc --version
+      
+    - name: Clone Tencent/mars
+      run: git clone --depth 1 https://github.com/Tencent/mars.git
+      
+    - name: Apply local patches
+      shell: pwsh
+      run: |
+        Copy-Item linux-patch/mars_utils.py  mars/mars/mars_utils.py           -Force
+        Copy-Item linux-patch/build_linux.py mars/mars/build_linux.py          -Force
+        Copy-Item linux-patch/opensslconf.h  mars/mars/openssl/include/openssl/opensslconf.h -Force
+
+    - name: Linux build (Release, non‑incremental)
+      shell: pwsh
+      run: |
+        Set-Location mars/mars
+        python build_linux.py 
+
+    - name: Zip build output
+      shell: pwsh
+      run: |
+        Compress-Archive -Path 'mars/mars/cmake_build/Linux/Linux.out/*' `
+                        -DestinationPath Linux_out.zip -Force
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Linux_out
+        path: Linux_out.zip
+        retention-days: 1
